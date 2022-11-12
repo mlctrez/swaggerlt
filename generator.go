@@ -401,7 +401,7 @@ func (g *Generator) buildOperation(op *Operation) error {
 
 	var block []jen.Code
 	block = append(block,
-		jen.Id("h").Op(":=").Qual(g.Options.ModuleName, "NewRequestHelper").
+		jen.Id("h").Op(":=").Qual("github.com/mlctrez/swaggerlt", "NewRequestHelper").
 			Params(jen.Lit(op.Verb), jen.Id("s.Endpoint"), jen.Lit(op.Path)))
 
 	for _, p := range op.Parameters {
