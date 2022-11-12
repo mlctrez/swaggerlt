@@ -2,8 +2,7 @@
 
 Takes a swagger 2.0 spec and generates a golang client with minimal external dependencies. 
 
-**Warning**
-This is not complete. 
+> **Warning** This is by no means completed yet. Use at your own risk. 
 
 
 
