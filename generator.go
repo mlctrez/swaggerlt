@@ -113,7 +113,7 @@ func (g *Generator) refWorker() {
 			_, err = jp.ArrayEach(value, func(value []byte, dataType jp.ValueType, offset int, err error) {
 				enumValue := string(value)
 				fn := toGoNameUpper(enumValue)
-				jc.Func().Params(jen.Id(name)).Id(fn).Params().String().Block(jen.Return(jen.Lit(enumValue)))
+				jc.Func().Params(jen.Id(name)).Id(fn).Params().Id(name).Block(jen.Return(jen.Lit(enumValue)))
 			}, "enum")
 			if err != nil {
 				log.Fatal(err)
