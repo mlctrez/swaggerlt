@@ -14,25 +14,27 @@ import (
 
 func NewRequestHelper(method, endpoint, uri string) *RequestHelper {
 	result := &RequestHelper{
-		Endpoint:    endpoint,
-		Uri:         uri,
-		Method:      strings.ToUpper(method),
-		QueryValues: url.Values{},
-		PathParam:   map[string]string{},
-		Headers:     map[string]string{},
+		Endpoint:      endpoint,
+		Uri:           uri,
+		Method:        strings.ToUpper(method),
+		QueryValues:   url.Values{},
+		PathParam:     map[string]string{},
+		Headers:       map[string]string{},
+		ResponseTypes: map[int]any{},
 	}
 	return result
 }
 
 type RequestHelper struct {
-	Endpoint    string
-	Uri         string
-	Method      string
-	QueryValues url.Values
-	PathParam   map[string]string
-	Headers     map[string]string
-	Body        any
-	Response    any
+	Endpoint      string
+	Uri           string
+	Method        string
+	QueryValues   url.Values
+	PathParam     map[string]string
+	Headers       map[string]string
+	ResponseTypes map[int]any
+	Body          any
+	Response      any
 }
 
 func (u *RequestHelper) Param(name string, value any) {
@@ -69,7 +71,11 @@ func (u *RequestHelper) Header(name string, value string) {
 	}
 }
 
-func (u *RequestHelper) Execute(client *http.Client) error {
+func (u *RequestHelper) ResponseType(code int, body any) {
+	u.ResponseTypes[code] = body
+}
+
+func (u *RequestHelper) Execute(client *http.Client) (err error) {
 
 	// calculate url from parameters
 	uri := u.Uri
@@ -83,18 +89,18 @@ func (u *RequestHelper) Execute(client *http.Client) error {
 	var body io.Reader
 
 	if u.Body != nil {
-		marshal, err := json.Marshal(u.Body)
-		if err != nil {
-			return err
+		var marshal []byte
+		if marshal, err = json.Marshal(u.Body); err != nil {
+			return
 		}
 		body = bytes.NewReader(marshal)
 	} else {
-		body = bytes.NewReader([]byte{})
+		body = bytes.NewBufferString("")
 	}
 
-	request, err := http.NewRequest(u.Method, u.Endpoint+uri, body)
-	if err != nil {
-		return err
+	var request *http.Request
+	if request, err = http.NewRequest(u.Method, u.Endpoint+uri, body); err != nil {
+		return
 	}
 
 	if u.Body != nil {
@@ -104,19 +110,43 @@ func (u *RequestHelper) Execute(client *http.Client) error {
 		request.Header.Set(header, value)
 	}
 
-	response, err := client.Do(request)
-	if err != nil {
+	var response *http.Response
+	if response, err = client.Do(request); err != nil {
 		return err
 	}
 
-	if u.Response != nil {
-		err = json.NewDecoder(response.Body).Decode(u.Response)
-		if err != nil {
-			return err
+	// dispose of the body and close
+	defer func() {
+		_, _ = io.ReadAll(response.Body)
+		_ = request.Body.Close()
+	}()
+
+	if response.StatusCode > 299 {
+		if rt := u.ResponseTypes[response.StatusCode]; rt == nil {
+			return fmt.Errorf("response status code %d with no valid response type", response.StatusCode)
+		} else {
+			if err = json.NewDecoder(response.Body).Decode(rt); err != nil {
+				return
+			}
+			return &Error{Body: rt, StatusCode: response.StatusCode}
 		}
 	} else {
-		_, _ = io.ReadAll(request.Body)
-		_ = request.Body.Close()
+		if u.Response != nil {
+			err = json.NewDecoder(response.Body).Decode(u.Response)
+		} else {
+			_, _ = io.ReadAll(request.Body)
+		}
 	}
-	return nil
+
+	return
+}
+
+type Error struct {
+	StatusCode int
+	Body       any
+}
+
+func (r *Error) Error() string {
+	marshal, _ := json.Marshal(r.Body)
+	return fmt.Sprintf("Error code=%d data=%s", r.StatusCode, string(marshal))
 }

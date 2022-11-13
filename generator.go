@@ -300,7 +300,7 @@ func (g *Generator) propertiesCode(value []byte, ref string) (propCode []jen.Cod
 			fmt.Println(fmtJson(value))
 			return fmt.Errorf("default case: fix propType %s with %s", propType, ref)
 		}
-		propCode = append(propCode, field.Tag(map[string]string{"json": propName}))
+		propCode = append(propCode, field.Tag(map[string]string{"json,omitempty": propName}))
 		return nil
 	}, "properties")
 	return
@@ -349,7 +349,7 @@ func (g *Generator) buildOperation(op *Operation) error {
 	var doc []string
 	doc = append(doc, fmt.Sprintf("%s %s", goName, op.Description))
 	for _, p := range op.Parameters {
-		// TODO: better doc formatting, split long lines
+		// TODO: better doc formatting - like splitting long lines
 		doc = append(doc, fmt.Sprintf(" %s - %s", p.Name, p.Description))
 	}
 
@@ -433,6 +433,17 @@ func (g *Generator) buildOperation(op *Operation) error {
 		//fmt.Fprintf(c, "%s = &%s{}\n", resultVar, resultTypeWithPkg)
 		block = append(block, jen.Id("h").Dot("Response").Op("=").Id("response"))
 		//fmt.Fprintf(c, "h.Response = %s\n", resultVar)
+	}
+
+	for i, res := range op.Responses {
+		if i == 0 || res.Code == 0 {
+			continue
+		}
+		if res.Ref != "" {
+			st := jen.Id("h").Dot("ResponseType").
+				Call(jen.Lit(res.Code), g.qualify((&jen.Statement{}).Op("&"), res.Ref).Op("{}"))
+			block = append(block, st)
+		}
 	}
 
 	block = append(block, jen.Err().Op("=").Id("h").Dot("Execute").
