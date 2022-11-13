@@ -300,7 +300,7 @@ func (g *Generator) propertiesCode(value []byte, ref string) (propCode []jen.Cod
 			fmt.Println(fmtJson(value))
 			return fmt.Errorf("default case: fix propType %s with %s", propType, ref)
 		}
-		propCode = append(propCode, field.Tag(map[string]string{"json": propName + ""}))
+		propCode = append(propCode, field.Tag(map[string]string{"json": propName + ",omitempty"}))
 		return nil
 	}, "properties")
 	return
