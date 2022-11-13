@@ -1,4 +1,5 @@
 # default ignore created by https://github.com/mlctrez/tigwen
 .idea/
-smapiv0/
+test/
+smapiv*/
 spec.json

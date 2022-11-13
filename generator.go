@@ -113,7 +113,8 @@ func (g *Generator) refWorker() {
 			_, err = jp.ArrayEach(value, func(value []byte, dataType jp.ValueType, offset int, err error) {
 				enumValue := string(value)
 				fn := toGoNameUpper(enumValue)
-				jc.Func().Params(jen.Id(name)).Id(fn).Params().Id(name).Block(jen.Return(jen.Lit(enumValue)))
+				jc.Func().Id(name + "_" + fn).Params().Params(jen.Id(name)).Block(jen.Return(jen.Lit(enumValue)))
+				//jc.Func().Params(jen.Id(name)).Id(fn).Params().Id(name).Block(jen.Return(jen.Lit(enumValue)))
 			}, "enum")
 			if err != nil {
 				log.Fatal(err)
@@ -371,6 +372,14 @@ func (g *Generator) buildOperation(op *Operation) error {
 					param = jen.Id(p.Name).Op("[]").String()
 				case "number":
 					param = jen.Id(p.Name).Op("[]").Int()
+				default:
+					if p.ItemsRef != "" {
+						param = g.qualify(jen.Id(p.Name).Op("[]"), p.ItemsRef)
+						break
+					}
+
+					fmt.Println(op.Path)
+					panic(fmt.Errorf("unhandled parameter name=%s in=%s type=%s items=%s", p.Name, p.In, p.Type, p.Items))
 				}
 
 			}
@@ -523,6 +532,7 @@ type Parameter struct {
 	Type        string `json:"type,omitempty"`
 	Ref         string `json:"ref,omitempty"`
 	Items       string `json:"items,omitempty"`
+	ItemsRef    string `json:"itemsRef,omitempty"`
 }
 
 func fmtJson(value []byte) string {

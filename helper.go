@@ -7,41 +7,54 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 )
 
 func NewRequestHelper(method, endpoint, uri string) *RequestHelper {
 	result := &RequestHelper{
-		Endpoint:   endpoint,
-		Uri:        uri,
-		Method:     strings.ToUpper(method),
-		QueryParam: map[string]string{},
-		PathParam:  map[string]string{},
+		Endpoint:    endpoint,
+		Uri:         uri,
+		Method:      strings.ToUpper(method),
+		QueryValues: url.Values{},
+		PathParam:   map[string]string{},
+		Headers:     map[string]string{},
 	}
 	return result
 }
 
 type RequestHelper struct {
-	Endpoint   string
-	Uri        string
-	Method     string
-	QueryParam map[string]string
-	PathParam  map[string]string
-	Headers    map[string]string
-	Body       any
-	Response   any
+	Endpoint    string
+	Uri         string
+	Method      string
+	QueryValues url.Values
+	PathParam   map[string]string
+	Headers     map[string]string
+	Body        any
+	Response    any
 }
 
 func (u *RequestHelper) Param(name string, value any) {
+
 	switch v := value.(type) {
 	case string:
 		if v != "" {
-			u.QueryParam[name] = v
+			u.QueryValues.Add(name, v)
 		}
 	case int:
 		if v > 0 {
-			u.QueryParam[name] = strconv.Itoa(v)
+			u.QueryValues.Add(name, strconv.Itoa(v))
+		}
+	default:
+		if reflect.TypeOf(value).Kind() == reflect.Slice {
+			s := reflect.ValueOf(value)
+			for i := 0; i < s.Len(); i++ {
+				sv := fmt.Sprintf("%s", s.Index(i))
+				if sv != "" {
+					u.QueryValues.Add(name, sv)
+				}
+			}
 		}
 	}
 }
@@ -63,12 +76,8 @@ func (u *RequestHelper) Execute(client *http.Client) error {
 	for name, param := range u.PathParam {
 		uri = strings.ReplaceAll(uri, fmt.Sprintf("{%s}", name), param)
 	}
-	if len(u.QueryParam) > 0 {
-		values := url.Values{}
-		for name, value := range u.QueryParam {
-			values.Add(name, value)
-		}
-		uri += "?" + values.Encode()
+	if len(u.QueryValues) > 0 {
+		uri += "?" + u.QueryValues.Encode()
 	}
 
 	var body io.Reader

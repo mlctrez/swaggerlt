@@ -50,6 +50,7 @@ func (op *Operation) parameters(value []byte, _ jp.ValueType, _ int, _ error) {
 	p.Required, _ = jp.GetBoolean(value, "required")
 	p.Type, _ = jp.GetString(value, "type")
 	p.Items, _ = jp.GetString(value, "items", "type")
+	p.ItemsRef, _ = jp.GetString(value, "items", "$ref")
 
 	p.Ref, _ = jp.GetString(value, "schema", "$ref")
 
